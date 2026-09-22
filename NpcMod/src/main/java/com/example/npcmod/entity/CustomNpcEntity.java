@@ -4,7 +4,6 @@ import com.example.npcmod.npcdata.NpcData;
 import com.example.npcmod.screen.*;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ai.goal.*;
-import net.minecraft.entity.ai.pathing.Path;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.mob.MobEntity;
@@ -19,7 +18,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -29,16 +27,10 @@ import software.bernie.geckolib.core.animation.*;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class CustomNpcEntity extends PathAwareEntity implements GeoEntity, NamedScreenHandlerFactory {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private NpcData.Info npcInfo;
     private int npcIndex = -1;
-    private final List<BlockPos> waypoints = new ArrayList<>();
-    private int currentWaypoint = 0;
-    private int ticksStuck = 0;
 
     public CustomNpcEntity(EntityType<? extends PathAwareEntity> entityType, World world) {
         super(entityType, world);
@@ -56,47 +48,17 @@ public class CustomNpcEntity extends PathAwareEntity implements GeoEntity, Named
         this.goalSelector.add(0, new SwimGoal(this));
         this.goalSelector.add(1, new LookAtEntityGoal(this, PlayerEntity.class, 8.0f));
         this.goalSelector.add(2, new LookAroundGoal(this));
+        this.goalSelector.add(3, new WanderAroundFarGoal(this, 0.6));
     }
 
     public void setNpcInfo(int index) {
         this.npcIndex = index;
-        if (index >= 0 && index < 33) {
+        if (index >= 0 && index < 62) {   // ← ИСПРАВЛЕНО С 33 НА 62
             NpcData.registerNpc(this.getUuid(), index);
             this.npcInfo = NpcData.getInfo(this.getUuid());
             this.setCustomName(Text.literal(npcInfo.name + " " + npcInfo.type.displayName));
             this.setCustomNameVisible(true);
-            setupWaypoints();
-        }
-    }
-
-    private void setupWaypoints() {
-        BlockPos home = this.getBlockPos();
-        waypoints.clear();
-        waypoints.add(home);
-        waypoints.add(home.add(5, 0, 0));
-        waypoints.add(home.add(5, 0, 5));
-        waypoints.add(home.add(0, 0, 5));
-        waypoints.add(home.add(-5, 0, 5));
-        waypoints.add(home.add(-5, 0, 0));
-        waypoints.add(home.add(-5, 0, -5));
-        waypoints.add(home.add(0, 0, -5));
-        waypoints.add(home.add(5, 0, -5));
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        if (!getWorld().isClient && !waypoints.isEmpty() && getNavigation().isIdle()) {
-            ticksStuck++;
-            if (ticksStuck > 60) {
-                ticksStuck = 0;
-                currentWaypoint = (currentWaypoint + 1) % waypoints.size();
-                BlockPos target = waypoints.get(currentWaypoint);
-                Path path = getNavigation().findPathTo(target, 1);
-                if (path != null) getNavigation().startMovingAlong(path, 0.6);
-            }
-        } else {
-            ticksStuck = 0;
+            // setupWaypoints(); ← УДАЛЕНО, метод больше не существует
         }
     }
 
